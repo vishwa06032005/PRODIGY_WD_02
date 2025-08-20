@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friction-Free Stopwatch</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1e1e2e 0%, #4c1d95 50%, #7c3aed 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: white;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .clock-icon {
+            width: 32px;
+            height: 32px;
+            fill: white;
+        }
+
+        .timer-container {
+            position: relative;
+            margin-bottom: 32px;
+        }
+
+        .timer-display {
+            font-size: clamp(3rem, 8vw, 6rem);
+            font-weight: bold;
+            text-align: center;
+            letter-spacing: 0.1em;
+            margin-bottom: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            padding: 24px 32px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            transition: transform 0.3s ease;
+        }
+
+        .timer-display:hover {
+            transform: scale(1.05);
+        }
+
+        .glow-effect {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(45deg, rgba(147, 51, 234, 0.2), rgba(139, 92, 246, 0.2));
+            border-radius: 24px;
+            filter: blur(40px);
+            z-index: -1;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            justify-content: center;
+            margin-bottom: 32px;
+        }
+
+        .btn {
+            padding: 16px 32px;
+            border: none;
+            border-radius: 16px;
+            font-weight: bold;
+            font-size: 1.125rem;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25);
+            transition: all 0.2s ease;
+            min-width: 140px;
+            justify-content: center;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .btn-start:hover {
+            background: linear-gradient(135deg, #059669, #047857);
+        }
+
+        .btn-pause {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        .btn-pause:hover {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+        }
+
+        .btn-resume {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+        }
+
+        .btn-resume:hover {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        }
+
+        .btn-lap {
+            background: linear-gradient(135deg, #eab308, #f59e0b);
+            padding: 16px 24px;
+            min-width: auto;
+        }
+
+        .btn-lap:hover {
+            background: linear-gradient(135deg, #d97706, #ea580c);
+        }
+
+        .btn-lap:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+            padding: 16px 24px;
+            min-width: auto;
+        }
+
+        .btn-reset:hover {
+            background: linear-gradient(135deg, #4b5563, #374151);
+        }
+
+        .undo-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 12px 24px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: pulse 2s infinite;
+            z-index: 1000;
+        }
+
+        .undo-btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 4px 16px;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .undo-btn:hover {
+            background: #1d4ed8;
+        }
+
+        .laps-container {
+            width: 100%;
+            max-width: 28rem;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .laps-title {
+            font-weight: bold;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .laps-list {
+            max-height: 16rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .lap-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .lap-number {
+            font-weight: 600;
+        }
+
+        .lap-times {
+            text-align: right;
+        }
+
+        .lap-split {
+            font-size: 0.875rem;
+            opacity: 0.8;
+        }
+
+        .lap-total {
+            font-family: 'Courier New', monospace;
+        }
+
+        .keyboard-hints {
+            margin-top: 32px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.875rem;
+            text-align: center;
+        }
+
+        .keyboard-hints kbd {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin: 0 4px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .icon {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        .icon-lg {
+            width: 32px;
+            height: 32px;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        @media (max-width: 768px) {
+            .keyboard-hints {
+                display: none;
+            }
+            
+            .btn {
+                padding: 14px 24px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <svg class="clock-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+            <polyline points="12,6 12,12 16,14" stroke="currentColor" stroke-width="2"/>
+        </svg>
+        <h1>Stopwatch</h1>
+    </div>
+
+    <!-- Timer Display -->
+    <div class="timer-container">
+        <div class="timer-display" id="timerDisplay">00:00.00</div>
+        <div class="glow-effect"></div>
+    </div>
+
+    <!-- Control Buttons -->
+    <div class="controls">
+        <button class="btn btn-start" id="startPauseBtn" onclick="handleStartPause()">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" id="playIcon">
+                <polygon points="5,3 19,12 5,21" fill="currentColor"/>
+            </svg>
+            <svg class="icon hidden" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" id="pauseIcon">
+                <rect x="6" y="4" width="4" height="16" fill="currentColor"/>
+                <rect x="14" y="4" width="4" height="16" fill="currentColor"/>
+            </svg>
+            <span id="btnText">START</span>
+        </button>
+
+        <button class="btn btn-lap hidden" id="lapBtn" onclick="handleLap()">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="currentColor"/>
+            </svg>
+            LAP
+        </button>
+
+        <button class="btn btn-reset hidden" id="resetBtn" onclick="handleReset()">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <polyline points="1,4 1,10 7,10" stroke="currentColor" stroke-width="2" fill="none"/>
+                <path d="M3.51,15a9,9,0,0,0,2.13,3.09,9,9,0,0,0,13.72,0,9,9,0,0,0,2.13-3.09" stroke="currentColor" stroke-width="2" fill="none"/>
+                <path d="M20.49,9A9,9,0,0,0,18.36,5.91,9,9,0,0,0,4.64,5.91,9,9,0,0,0,2.51,9" stroke="currentColor" stroke-width="2" fill="none"/>
+            </svg>
+            RESET
+        </button>
+    </div>
+
+    <!-- Undo Notification -->
+    <div class="undo-notification hidden" id="undoNotification">
+        <button class="undo-btn" onclick="handleUndo()">UNDO</button>
+        <span>Reset performed</span>
+    </div>
+
+    <!-- Lap Times -->
+    <div class="laps-container hidden" id="lapsContainer">
+        <h3 class="laps-title">Lap Times</h3>
+        <div class="laps-list" id="lapsList"></div>
+    </div>
+
+    <!-- Keyboard Shortcuts -->
+    <div class="keyboard-hints">
+        Keyboard: <kbd>Space</kbd> Start/Pause • <kbd>L</kbd> Lap • <kbd>R</kbd> Reset
+    </div>
+
+    <script>
+        let time = 0;
+        let isRunning = false;
+        let laps = [];
+        let intervalId = null;
+        let showUndo = false;
+        let lastState = null;
+
+        // DOM Elements
+        const timerDisplay = document.getElementById('timerDisplay');
+        const startPauseBtn = document.getElementById('startPauseBtn');
+        const lapBtn = document.getElementById('lapBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const playIcon = document.getElementById('playIcon');
+        const pauseIcon = document.getElementById('pauseIcon');
+        const btnText = document.getElementById('btnText');
+        const undoNotification = document.getElementById('undoNotification');
+        const lapsContainer = document.getElementById('lapsContainer');
+        const lapsList = document.getElementById('lapsList');
+
+        function formatTime(milliseconds) {
+            const totalSeconds = Math.floor(milliseconds / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            const ms = Math.floor((milliseconds % 1000) / 10);
+            
+            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+        }
+
+        function updateDisplay() {
+            timerDisplay.textContent = formatTime(time);
+        }
+
+        function updateButtons() {
+            if (isRunning) {
+                startPauseBtn.className = 'btn btn-pause';
+                playIcon.classList.add('hidden');
+                pauseIcon.classList.remove('hidden');
+                btnText.textContent = 'PAUSE';
+                lapBtn.classList.remove('hidden');
+                lapBtn.disabled = false;
+            } else {
+                if (time > 0) {
+                    startPauseBtn.className = 'btn btn-resume';
+                    btnText.textContent = 'RESUME';
+                } else {
+                    startPauseBtn.className = 'btn btn-start';
+                    btnText.textContent = 'START';
+                }
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+                lapBtn.disabled = true;
+            }
+
+            if (time > 0) {
+                resetBtn.classList.remove('hidden');
+                if (!isRunning) {
+                    lapBtn.classList.remove('hidden');
+                }
+            } else {
+                resetBtn.classList.add('hidden');
+                lapBtn.classList.add('hidden');
+            }
+        }
+
+        function handleStartPause() {
+            isRunning = !isRunning;
+            
+            if (isRunning) {
+                intervalId = setInterval(() => {
+                    time += 10;
+                    updateDisplay();
+                }, 10);
+            } else {
+                clearInterval(intervalId);
+            }
+            
+            updateButtons();
+        }
+
+        function handleLap() {
+            if (isRunning && time > 0) {
+                const lapTime = time;
+                const lapNumber = laps.length + 1;
+                const previousLapTime = laps.length > 0 ? laps[laps.length - 1].totalTime : 0;
+                const splitTime = lapTime - previousLapTime;
+                
+                laps.push({
+                    lap: lapNumber,
+                    splitTime: splitTime,
+                    totalTime: lapTime
+                });
+                
+                updateLapsDisplay();
+            }
+        }
+
+        function handleReset() {
+            lastState = {
+                time: time,
+                laps: [...laps],
+                isRunning: isRunning
+            };
+            
+            clearInterval(intervalId);
+            time = 0;
+            isRunning = false;
+            laps = [];
+            
+            updateDisplay();
+            updateButtons();
+            updateLapsDisplay();
+            showUndoNotification();
+        }
+
+        function handleUndo() {
+            if (lastState) {
+                time = lastState.time;
+                laps = lastState.laps;
+                isRunning = lastState.isRunning;
+                
+                if (isRunning) {
+                    intervalId = setInterval(() => {
+                        time += 10;
+                        updateDisplay();
+                    }, 10);
+                }
+                
+                updateDisplay();
+                updateButtons();
+                updateLapsDisplay();
+                hideUndoNotification();
+                lastState = null;
+            }
+        }
+
+        function showUndoNotification() {
+            undoNotification.classList.remove('hidden');
+            setTimeout(hideUndoNotification, 3000);
+        }
+
+        function hideUndoNotification() {
+            undoNotification.classList.add('hidden');
+        }
+
+        function updateLapsDisplay() {
+            if (laps.length > 0) {
+                lapsContainer.classList.remove('hidden');
+                
+                // Clear existing laps
+                lapsList.innerHTML = '';
+                
+                // Add laps in reverse order (newest first)
+                [...laps].reverse().forEach(lap => {
+                    const lapItem = document.createElement('div');
+                    lapItem.className = 'lap-item';
+                    lapItem.innerHTML = `
+                        <span class="lap-number">Lap ${lap.lap}</span>
+                        <div class="lap-times">
+                            <div class="lap-split">+${formatTime(lap.splitTime)}</div>
+                            <div class="lap-total">${formatTime(lap.totalTime)}</div>
+                        </div>
+                    `;
+                    lapsList.appendChild(lapItem);
+                });
+            } else {
+                lapsContainer.classList.add('hidden');
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (event) => {
+            // Prevent default behavior for our shortcuts
+            if (event.code === 'Space' || event.key === 'l' || event.key === 'L' || event.key === 'r' || event.key === 'R') {
+                event.preventDefault();
+            }
+            
+            switch (event.code) {
+                case 'Space':
+                    handleStartPause();
+                    break;
+                case 'KeyL':
+                    if (isRunning) handleLap();
+                    break;
+                case 'KeyR':
+                    if (time > 0) handleReset();
+                    break;
+            }
+        });
+
+        // Initialize display
+        updateDisplay();
+        updateButtons();
+    </script>
+</body>
+</html>
